@@ -4,12 +4,12 @@
             "bondTrialComplete": false,
             "chosenAspects": [],
             "echoCount": 5,
-            "insightBalance": 159,
+            "insightBalance": 161,
             "signalTallies": {
                 "Aggressive": 65,
-                "Reactive": 198,
-                "Sacrificial": 55,
-                "Supportive": 215
+                "Reactive": 201,
+                "Sacrificial": 57,
+                "Supportive": 218
             }
         },
         "vex": {
@@ -26,33 +26,37 @@
                 "vex_reactive_3"
             ],
             "echoCount": 5,
-            "insightBalance": 46,
+            "insightBalance": 47,
             "signalTallies": {
                 "Aggressive": 48,
-                "Reactive": 119,
+                "Reactive": 121,
                 "Sacrificial": 40,
-                "Supportive": 118
+                "Supportive": 121
             }
         },
         "zara": {
             "bondTrialComplete": false,
             "chosenAspects": [],
             "echoCount": 5,
-            "insightBalance": 139,
+            "insightBalance": 141,
             "signalTallies": {
                 "Aggressive": 39,
-                "Reactive": 174,
+                "Reactive": 177,
                 "Sacrificial": 37,
-                "Supportive": 206
+                "Supportive": 210
             }
         }
     },
-    "characterRunCounts": {},
+    "characterRunCounts": {
+        "lyra": 1,
+        "vex": 1,
+        "zara": 1
+    },
     "characterXP": {
-        "ignis": 13601,
-        "lyra": 8405,
-        "vex": 8433,
-        "zara": 8433
+        "ignis": 13781,
+        "lyra": 8542,
+        "vex": 8570,
+        "zara": 8570
     },
     "clearedDungeonIds": [
         "dungeon_01",
@@ -84,7 +88,7 @@
     },
     "nightmareClearedDungeonIds": [],
     "playerLevel": 8,
-    "playerXp": 3747,
+    "playerXp": 3758,
     "unlockedCharacterIds": [
         "lyra",
         "vex",

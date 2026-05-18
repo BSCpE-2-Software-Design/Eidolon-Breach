@@ -208,17 +208,46 @@ void selectParty(Party &party,
                 needsRender = true;
         }
 
+        if (event.type == SDL_EVENT_MOUSE_MOTION)
+        {
+            const int row{renderer.getMenuRowAt(
+                static_cast<int>(event.motion.x), static_cast<int>(event.motion.y))};
+            if (row >= 0 && static_cast<std::size_t>(row) < display.size())
+            {
+                const std::size_t hovered{static_cast<std::size_t>(row)};
+                if (hovered != cursor)
+                {
+                    cursor = hovered;
+                    needsRender = true;
+                }
+            }
+        }
+        if (event.type == SDL_EVENT_MOUSE_WHEEL)
+        {
+            if (event.wheel.y > 0.f && cursor > 0)
+            {
+                --cursor;
+                needsRender = true;
+            }
+            else if (event.wheel.y < 0.f && cursor + 1 < display.size())
+            {
+                ++cursor;
+                needsRender = true;
+            }
+        }
         if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && event.button.button == SDL_BUTTON_LEFT)
         {
-            const float firstRowY{static_cast<float>(renderer.getWindowHeight()) * 0.18f + 36.f};
-            const int row{static_cast<int>((event.button.y - firstRowY) / 30.f)};
+            const int row{renderer.getMenuRowAt(
+                static_cast<int>(event.button.x), static_cast<int>(event.button.y))};
             if (row >= 0 && static_cast<std::size_t>(row) < available.size())
             {
                 cursor = static_cast<std::size_t>(row);
                 togglePartyMember(cursor, selected, selectionOrder, selectedCount, maxPick);
                 needsRender = true;
             }
-            else if (static_cast<std::size_t>(row) == available.size() && selectedCount > 0)
+            else if (row >= 0 &&
+                     static_cast<std::size_t>(row) == available.size() &&
+                     selectedCount > 0)
                 done = true;
         }
 

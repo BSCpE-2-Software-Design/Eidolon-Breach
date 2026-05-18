@@ -1,7 +1,7 @@
 {
-  "masterVolume": 10,
+  "masterVolume": 20,
   "musicVolume": 10,
-  "resolutionHeight": 1080,
-  "resolutionWidth": 1920,
+  "resolutionHeight": 720,
+  "resolutionWidth": 1280,
   "sfxVolume": 0
 }
