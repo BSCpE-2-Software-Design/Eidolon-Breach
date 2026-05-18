@@ -1762,6 +1762,15 @@ void SDL3Renderer::renderSelectionMenu(const std::string &title,
     constexpr float kHintH = 26.f;
     constexpr float kPanelChamfer = 6.f;
 
+    if (m_restParty && title == m_restTitle)
+    {
+        drawRestLayout(*m_restParty, title, options, selected);
+        SDL_RenderPresent(m_renderer);
+        return;
+    }
+    m_restParty = nullptr;
+    m_restTitle.clear();
+
     // When dungeon select is active, re-draw the split layout instead.
     if (!m_dungeonSelectInfos.empty() && title == m_dungeonSelectTitle)
     {
@@ -1975,6 +1984,244 @@ void SDL3Renderer::renderDungeonSelect(const std::string &title,
     drawDungeonSelectScreen(title, dungeons, selected);
     SDL_RenderPresent(m_renderer);
 }
+
+void SDL3Renderer::renderRestMenu(const Party &playerParty,
+                                  const std::string &title,
+                                  const std::vector<std::string> &options,
+                                  std::size_t selected)
+{
+    m_restParty = &playerParty;
+    m_restTitle = title;
+    drawRestLayout(playerParty, title, options, selected);
+    SDL_RenderPresent(m_renderer);
+}
+
+void SDL3Renderer::drawRestLayout(const Party &party,
+                                  const std::string &title,
+                                  const std::vector<std::string> &options,
+                                  std::size_t selected)
+{
+    constexpr float kHintH = 26.f;
+    constexpr float kCardX = 10.f;
+    constexpr float kCardY = 20.f;
+    constexpr float kCardW = 200.f;
+    constexpr float kMenuX = 220.f;
+    constexpr float kMenuW = 1050.f;
+    constexpr float kTitleH = 58.f;
+    constexpr float kRowH = 38.f;
+    constexpr float kRowGap = 5.f;
+    constexpr float kRowStep = kRowH + kRowGap;
+    constexpr float kListTopPad = 12.f;
+    constexpr float kListBotPad = 16.f;
+    constexpr float kPanelChamfer = 6.f;
+    constexpr std::size_t kMaxVisibleRows = 11;
+
+    SDL_SetRenderDrawColor(m_renderer, 11, 11, 18, 255);
+    SDL_RenderClear(m_renderer);
+    SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(m_renderer, 255, 255, 255, 5);
+    for (float gy = 20.f; gy < 720.f; gy += 20.f)
+        SDL_RenderLine(m_renderer, 0.f, gy, 1280.f, gy);
+    SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_NONE);
+
+    fillRect({0.f, 720.f - kHintH, 1280.f, kHintH}, 12, 12, 18);
+    fillRect({0.f, 720.f - kHintH, 1280.f, 1.f}, 35, 35, 55);
+    if (m_font)
+        renderText("[Up/Down] Navigate   [Enter] Confirm   [Esc] Back",
+                   60.f, 720.f - kHintH + 5.f, 100, 100, 120);
+
+    // Player cards (left panel) 
+    {
+        const SDL_FRect savedPanel{m_playerPanel};
+        m_playerPanel = {kCardX, kCardY, kCardW, 720.f};
+
+        for (std::size_t i{0}; i < party.size(); ++i)
+        {
+            const Unit *u{party.getUnitAt(i)};
+            if (!u)
+                continue;
+            const float frac{u->getMaxHp() > 0
+                                 ? static_cast<float>(u->getHp()) /
+                                       static_cast<float>(u->getMaxHp())
+                                 : 0.f};
+            m_hpBars[u] = {frac, frac};
+        }
+
+        float totalCardH{0.f};
+        for (std::size_t i{0}; i < party.size(); ++i)
+        {
+            const Unit *u{party.getUnitAt(i)};
+            if (u)
+                totalCardH += playerCardHeight(u, false);
+        }
+        constexpr float kAvailH{720.f - kHintH - kCardY};
+        float py{kCardY + std::max(0.f, (kAvailH - totalCardH) * 0.5f)};
+        for (std::size_t i{0}; i < party.size(); ++i)
+        {
+            const Unit *u{party.getUnitAt(i)};
+            if (u)
+                drawPlayerCard(u, py, false, false);
+        }
+
+        m_playerPanel = savedPanel;
+    }
+
+    if (!m_fontLarge || options.empty())
+        return;
+
+    // Menu panel (right side) 
+    const std::size_t totalOpts = options.size();
+    const std::size_t visRows = std::min(totalOpts, kMaxVisibleRows);
+    const std::size_t windowStart =
+        (selected >= visRows)
+            ? std::min(selected - visRows + 1, totalOpts - visRows)
+            : 0;
+
+    const float panelH = kTitleH + kListTopPad +
+                         static_cast<float>(visRows) * kRowStep + kListBotPad;
+    const float panelY = std::max(16.f, (720.f - kHintH - panelH) * 0.5f);
+
+    m_menuPanelX = kMenuX;
+    m_menuPanelW = kMenuW;
+    m_menuFirstRowY = panelY + kTitleH + kListTopPad;
+    m_menuRowStep = kRowStep;
+    m_menuWindowStart = windowStart;
+    m_menuNumOptions = totalOpts;
+    m_menuNumVisible = visRows;
+
+    // Drop shadow.
+    {
+        constexpr float ox = 6.f, oy = 6.f;
+        const SDL_FColor sf{0.f, 0.f, 0.f, 0.22f};
+        const SDL_FColor sn{0.f, 0.f, 0.f, 0.42f};
+        const SDL_FPoint z{0.f, 0.f};
+        const SDL_Vertex sv[6] = {
+            {{kMenuX + ox, panelY + oy}, sf, z},
+            {{kMenuX + kMenuW + ox, panelY + oy}, sf, z},
+            {{kMenuX + kMenuW + ox, panelY + panelH + oy}, sn, z},
+            {{kMenuX + ox, panelY + panelH + oy}, sn, z},
+            {{kMenuX + ox, panelY + oy}, sf, z},
+            {{kMenuX + kMenuW + ox, panelY + panelH + oy}, sn, z},
+        };
+        SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_BLEND);
+        SDL_RenderGeometry(m_renderer, nullptr, sv, 6, nullptr, 0);
+        SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_NONE);
+    }
+
+    const SDL_FRect panelRect{kMenuX, panelY, kMenuW, panelH};
+    renderChamferedFillRect(panelRect, kPanelChamfer, 18, 18, 28);
+    renderChamferedBorder({kMenuX - 1.f, panelY - 1.f, kMenuW + 2.f, panelH + 2.f},
+                          kPanelChamfer + 1.f, 8, 8, 14, 210);
+    renderChamferedBorder(panelRect, kPanelChamfer, 55, 70, 110, 210);
+    renderChamferedBorder({kMenuX + 1.f, panelY + 1.f, kMenuW - 2.f, panelH - 2.f},
+                          kPanelChamfer - 1.f, 8, 8, 14, 160);
+
+    const SDL_FRect titleRect{kMenuX, panelY, kMenuW, kTitleH};
+    renderChamferedFillRect(titleRect, kPanelChamfer, 24, 26, 42);
+    fillRect({kMenuX + 8.f, panelY + kTitleH - 1.f, kMenuW - 16.f, 1.f}, 55, 70, 110, 200);
+    fillRect({kMenuX + kPanelChamfer, panelY, kMenuW - kPanelChamfer * 2.f, 1.f}, 70, 90, 140, 180);
+    renderTextEx(m_fontLarge, title,
+                 kMenuX + 22.f, panelY + (kTitleH - 22.f) * 0.5f,
+                 190, 210, 255);
+
+    float ry = panelY + kTitleH + kListTopPad;
+    for (std::size_t vi{0}; vi < visRows; ++vi)
+    {
+        const std::size_t i{windowStart + vi};
+        const bool sel{i == selected};
+        const SDL_FRect rowRect{kMenuX + 10.f, ry, kMenuW - 20.f, kRowH};
+
+        if (sel)
+        {
+            renderChamferedFillRect(rowRect, 3.f, 35, 42, 62);
+            SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_BLEND);
+            renderChamferedBorder({rowRect.x - 2.f, rowRect.y - 2.f,
+                                   rowRect.w + 4.f, rowRect.h + 4.f},
+                                  5.f, 90, 130, 200, 28);
+            renderChamferedBorder({rowRect.x - 1.f, rowRect.y - 1.f,
+                                   rowRect.w + 2.f, rowRect.h + 2.f},
+                                  4.f, 90, 130, 200, 70);
+            SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_NONE);
+            renderChamferedBorder(rowRect, 3.f, 90, 130, 200, 200);
+        }
+        else
+        {
+            renderChamferedFillRect(rowRect, 3.f, 22, 22, 34);
+            renderChamferedBorder(rowRect, 3.f, 40, 40, 58, 120);
+        }
+
+        if (sel)
+        {
+            const float arrowCx{rowRect.x + 10.f};
+            const float arrowCy{ry + kRowH * 0.5f};
+            const SDL_FPoint z{0.f, 0.f};
+            SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_BLEND);
+            const SDL_FColor glow{1.f, 1.f, 1.f, 0.22f};
+            const SDL_Vertex gv[3] = {
+                {{arrowCx + 9.f, arrowCy}, glow, z},
+                {{arrowCx - 1.f, arrowCy - 6.f}, glow, z},
+                {{arrowCx - 1.f, arrowCy + 6.f}, glow, z},
+            };
+            SDL_RenderGeometry(m_renderer, nullptr, gv, 3, nullptr, 0);
+            const SDL_FColor white{1.f, 1.f, 1.f, 0.90f};
+            const SDL_Vertex av[3] = {
+                {{arrowCx + 7.f, arrowCy}, white, z},
+                {{arrowCx, arrowCy - 5.f}, white, z},
+                {{arrowCx, arrowCy + 5.f}, white, z},
+            };
+            SDL_RenderGeometry(m_renderer, nullptr, av, 3, nullptr, 0);
+            SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_NONE);
+        }
+
+        const float numX{rowRect.x + 22.f};
+        const float textY{ry + (kRowH - 16.f) * 0.5f};
+        if (m_font)
+            renderText(std::to_string(i + 1) + ".",
+                       numX, textY,
+                       sel ? 140 : 70, sel ? 160 : 78, sel ? 200 : 95);
+        const float optX{numX + 26.f};
+        if (sel)
+            renderTextEx(m_fontLarge, truncate(options[i], 80),
+                         optX, ry + (kRowH - 22.f) * 0.5f, 220, 230, 255);
+        else if (m_font)
+            renderText(truncate(options[i], 80),
+                       optX, textY, 160, 165, 185);
+
+        ry += kRowStep;
+    }
+
+    if (windowStart > 0)
+    {
+        const float ix{kMenuX + kMenuW * 0.5f};
+        const float iy{panelY + kTitleH + 3.f};
+        const SDL_FPoint z{0.f, 0.f};
+        const SDL_FColor ind{0.7f, 0.8f, 1.f, 0.70f};
+        const SDL_Vertex tv[3] = {
+            {{ix, iy}, ind, z},
+            {{ix - 7.f, iy + 8.f}, ind, z},
+            {{ix + 7.f, iy + 8.f}, ind, z},
+        };
+        SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_BLEND);
+        SDL_RenderGeometry(m_renderer, nullptr, tv, 3, nullptr, 0);
+        SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_NONE);
+    }
+    if (windowStart + visRows < totalOpts)
+    {
+        const float ix{kMenuX + kMenuW * 0.5f};
+        const float iy{panelY + panelH - 10.f};
+        const SDL_FPoint z{0.f, 0.f};
+        const SDL_FColor ind{0.7f, 0.8f, 1.f, 0.70f};
+        const SDL_Vertex tv[3] = {
+            {{ix, iy}, ind, z},
+            {{ix - 7.f, iy - 8.f}, ind, z},
+            {{ix + 7.f, iy - 8.f}, ind, z},
+        };
+        SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_BLEND);
+        SDL_RenderGeometry(m_renderer, nullptr, tv, 3, nullptr, 0);
+        SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_NONE);
+    }
+}
+
 
 void SDL3Renderer::drawDungeonSelectScreen(const std::string &title,
                                            const std::vector<DungeonSelectInfo> &dungeons,
@@ -2469,6 +2716,10 @@ void SDL3Renderer::clearBattleCache()
     m_dungeonSelectTitle.clear();
     m_battleActive = false;
     m_log.clear();
+
+    m_restParty = nullptr;
+    m_restTitle.clear();
+
     redrawAll();
 }
 

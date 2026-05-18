@@ -63,6 +63,10 @@ class SDL3Renderer : public IRenderer, public ILayoutQuery
     void renderDungeonSelect(const std::string &title,
                              const std::vector<DungeonSelectInfo> &dungeons,
                              std::size_t selected = 0) override;
+    void renderRestMenu(const Party &playerParty,
+                        const std::string &title,
+                        const std::vector<std::string> &options,
+                        std::size_t selected = 0) override;
 
     // ILayoutQuery
     [[nodiscard]] int getActionRowAt(int x, int y) const override;
@@ -241,6 +245,9 @@ class SDL3Renderer : public IRenderer, public ILayoutQuery
     std::vector<DungeonSelectInfo> m_dungeonSelectInfos{};
     std::string m_dungeonSelectTitle{};
 
+    const Party *m_restParty{nullptr};
+    std::string m_restTitle{};
+
     float m_menuPanelX{0.f};
     float m_menuPanelW{0.f};
     float m_menuFirstRowY{0.f};
@@ -270,6 +277,11 @@ class SDL3Renderer : public IRenderer, public ILayoutQuery
     void drawDungeonSelectScreen(const std::string &title,
                                  const std::vector<DungeonSelectInfo> &dungeons,
                                  std::size_t selected);
+
+    void drawRestLayout(const Party &party,
+                        const std::string &title,
+                        const std::vector<std::string> &options,
+                        std::size_t selected);
 
     /**
      * @brief Draw the right-hand detail panel for one dungeon.

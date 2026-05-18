@@ -51,9 +51,10 @@ void RestNode::enter(Party &party, MetaProgress &meta,
         options.push_back("Continue");
 
         input.setMenuContext("REST SITE", options);
-        renderer.renderSelectionMenu("REST SITE", options);
+        renderer.renderRestMenu(party, "REST SITE", options);
         const std::size_t choice = input.getMenuChoice(options.size());
-
+        if (choice == IInputHandler::kCancelChoice)
+            break;
         const std::string &chosen{options[choice]};
 
         if (chosen.rfind("Heal", 0) == 0)

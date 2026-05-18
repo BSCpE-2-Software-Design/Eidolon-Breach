@@ -149,5 +149,22 @@ class IRenderer
         renderSelectionMenu(title, opts, selected);
     }
 
+    /**
+     * @brief Render rest node: character cards on the left, menu on the right.
+     *        SDL3Renderer draws HP and Exposure bars that reflect current party state.
+     *        Default falls back to renderSelectionMenu for test doubles.
+     * @param playerParty Party whose cards are displayed.
+     * @param title       Menu title (e.g. "REST SITE").
+     * @param options     Selectable options.
+     * @param selected    Currently highlighted index.
+     */
+    virtual void renderRestMenu(const Party & /*playerParty*/,
+                                const std::string &title,
+                                const std::vector<std::string> &options,
+                                std::size_t selected = 0)
+    {
+        renderSelectionMenu(title, options, selected);
+    }
+
 };
 
